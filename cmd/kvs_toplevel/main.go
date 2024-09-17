@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/linxGnu/grocksdb"
 	"github.com/o53/etf"
@@ -13,8 +11,9 @@ import (
 
 func main() {
 	// Set up RocksDB directory
-	dbPath := filepath.Join(os.TempDir(), "rocksdb_example")
-	defer os.RemoveAll(dbPath)
+	// dbPath := filepath.Join(os.TempDir(), "rocksdb_example")
+	dbPath := "./rocksdb_example"
+	// defer os.RemoveAll(dbPath)
 
 	// Initialize RocksDB
 	// Set up RocksDB options
@@ -31,7 +30,7 @@ func main() {
 
 	rocksdb := kvs.NewRocksDB(db, readOpts, writeOpts)
 
-	defer rocksdb.Close()
+	// defer rocksdb.Close()
 
 	// Initialize KVSRocksDB
 	kvs := kvs.NewKVSRocksDB(rocksdb)
@@ -46,7 +45,6 @@ func main() {
 	// Test Put method
 	id := seqID
 	data := etf.Map{
-
 		etf.MapElem{Key: etf.Atom("name"), Value: etf.Atom("Alice")},
 		etf.MapElem{Key: etf.Atom("age"), Value: etf.Integer(30)},
 	}

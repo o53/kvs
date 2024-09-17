@@ -463,39 +463,33 @@ func (r *RocksDB) Put(key etf.ErlTerm, value etf.ErlTerm) error {
 	return r.db.Put(r.wo, keyb, valueb)
 }
 
-func (r *RocksDB) Index(field etf.ErlTerm, value etf.ErlTerm) ([]etf.ErlTerm, error) {
+func (r *RocksDB) Index(field etf.ErlTerm, erlValue etf.ErlTerm) ([]etf.ErlTerm, error) {
 	iter := r.db.NewIterator(r.ro)
 	defer iter.Close()
 
 	result := []etf.ErlTerm{}
 
-	fieldb, err := etf.EncodeErlTerm(field, true)
-	if err != nil {
-		return nil, err
-	}
-
-	iter.Seek(fieldb)
+	iter.SeekToFirst()
 	for ; iter.Valid(); iter.Next() {
-		key := iter.Key()
 		value := iter.Value()
-
-		_, err := etf.DecodeErlTerm(key.Data())
-		if err != nil {
-			key.Free()
-			value.Free()
-			return nil, err
-		}
 
 		v, err := etf.DecodeErlTerm(value.Data())
 		if err != nil {
-			key.Free()
 			value.Free()
-			return nil, err
+			continue
 		}
 
-		result = append(result, v)
+		m, ok := v.(etf.Map)
+		if !ok {
+			value.Free()
+			continue
+		}
+		for _, me := range m {
+			if me.Key == field && me.Value == erlValue {
+				result = append(result, v)
+			}
+		}
 
-		key.Free()
 		value.Free()
 	}
 
@@ -515,12 +509,12 @@ func (r *RocksDB) Seq() (etf.ErlTerm, error) {
 	defer iter.Close()
 
 	// Seek to the last key (biggest)
-	iter.SeekToLast()
+	iter.Seek(seqKey)
 
 	var nextID uint64
 	if iter.Valid() {
 		// Get the largest key (last ID)
-		largestKey := iter.Key().Data()
+		largestKey := iter.Value().Data()
 		largestID, err := strconv.ParseUint(string(largestKey), 10, 64)
 		if err != nil {
 			log.Fatal("Error parsing ID:", err)
@@ -529,7 +523,7 @@ func (r *RocksDB) Seq() (etf.ErlTerm, error) {
 		// Compute the next ID
 		nextID = largestID + 1
 
-		err = r.db.Put(r.wo, []byte(strconv.FormatUint(nextID, 10)), seqKey)
+		err = r.db.Put(r.wo, seqKey, []byte(strconv.FormatUint(nextID, 10)))
 		if err != nil {
 			return nil, err
 		}
@@ -538,13 +532,11 @@ func (r *RocksDB) Seq() (etf.ErlTerm, error) {
 		// If there are no keys, start with ID 1
 		nextID = 1
 
-		err := r.db.Put(r.wo, []byte(strconv.FormatUint(nextID, 10)), seqKey)
+		err := r.db.Put(r.wo, seqKey, []byte(strconv.FormatUint(nextID, 10)))
 		if err != nil {
 			return nil, err
 		}
 	}
-
-	iter.Close()
 
 	return etf.Integer(nextID), nil
 }
