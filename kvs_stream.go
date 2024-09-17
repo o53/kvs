@@ -3,6 +3,7 @@ package kvs
 import (
 	"bytes"
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 
@@ -424,6 +425,128 @@ func (r *RocksDB) Count() (int64, error) {
 		return 0, err
 	}
 	return int64(nn), nil
+}
+
+func (r *RocksDB) Get(key etf.ErlTerm) (etf.ErlTerm, error) {
+	keyb, err := etf.EncodeErlTerm(key, true)
+	if err != nil {
+		return nil, err
+	}
+
+	value, err := r.db.GetBytes(r.ro, keyb)
+	if err != nil {
+		return nil, err
+	}
+
+	if value == nil {
+		return nil, errors.New("key not found")
+	}
+
+	v, err := etf.DecodeErlTerm(value)
+	if err != nil {
+		return nil, err
+	}
+
+	return v, nil
+}
+
+func (r *RocksDB) Put(key etf.ErlTerm, value etf.ErlTerm) error {
+	keyb, err := etf.EncodeErlTerm(key, true)
+	if err != nil {
+		return err
+	}
+	valueb, err := etf.EncodeErlTerm(value, true)
+	if err != nil {
+		return err
+	}
+
+	return r.db.Put(r.wo, keyb, valueb)
+}
+
+func (r *RocksDB) Index(field etf.ErlTerm, value etf.ErlTerm) ([]etf.ErlTerm, error) {
+	iter := r.db.NewIterator(r.ro)
+	defer iter.Close()
+
+	result := []etf.ErlTerm{}
+
+	fieldb, err := etf.EncodeErlTerm(field, true)
+	if err != nil {
+		return nil, err
+	}
+
+	iter.Seek(fieldb)
+	for ; iter.Valid(); iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+
+		_, err := etf.DecodeErlTerm(key.Data())
+		if err != nil {
+			key.Free()
+			value.Free()
+			return nil, err
+		}
+
+		v, err := etf.DecodeErlTerm(value.Data())
+		if err != nil {
+			key.Free()
+			value.Free()
+			return nil, err
+		}
+
+		result = append(result, v)
+
+		key.Free()
+		value.Free()
+	}
+
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+var (
+	seqKey []byte = []byte("____seq")
+)
+
+func (r *RocksDB) Seq() (etf.ErlTerm, error) {
+	iter := r.db.NewIterator(r.ro)
+	defer iter.Close()
+
+	// Seek to the last key (biggest)
+	iter.SeekToLast()
+
+	var nextID uint64
+	if iter.Valid() {
+		// Get the largest key (last ID)
+		largestKey := iter.Key().Data()
+		largestID, err := strconv.ParseUint(string(largestKey), 10, 64)
+		if err != nil {
+			log.Fatal("Error parsing ID:", err)
+		}
+
+		// Compute the next ID
+		nextID = largestID + 1
+
+		err = r.db.Put(r.wo, []byte(strconv.FormatUint(nextID, 10)), seqKey)
+		if err != nil {
+			return nil, err
+		}
+
+	} else {
+		// If there are no keys, start with ID 1
+		nextID = 1
+
+		err := r.db.Put(r.wo, []byte(strconv.FormatUint(nextID, 10)), seqKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	iter.Close()
+
+	return etf.Integer(nextID), nil
 }
 
 // Close closes the database

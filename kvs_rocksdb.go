@@ -2,7 +2,7 @@ package kvs
 
 import "github.com/o53/etf"
 
-// RocksDB is a key-value store implementation using RocksDB as the backend.
+// KVSRocksDB is a key-value store implementation using RocksDB as the backend.
 
 type KVSRocksDB struct {
 	db *RocksDB
@@ -15,11 +15,11 @@ func NewKVSRocksDB(db *RocksDB) *KVSRocksDB {
 }
 
 func (r *KVSRocksDB) Put(id etf.ErlTerm, data etf.ErlTerm) error {
-	return r.db.SaveReader(id, data)
+	return r.db.Put(id, data)
 }
 
 func (r *KVSRocksDB) Get(id etf.ErlTerm) (etf.ErlTerm, error) {
-	return r.db.LoadReader(id)
+	return r.db.Get(id)
 }
 
 func (r *KVSRocksDB) Delete(id etf.ErlTerm) error {
@@ -28,12 +28,12 @@ func (r *KVSRocksDB) Delete(id etf.ErlTerm) error {
 
 // I have no idea how to implement this function
 func (r *KVSRocksDB) Index(field etf.ErlTerm, value etf.ErlTerm) ([]etf.ErlTerm, error) {
-	return nil, nil
+	return r.db.Index(field, value)
 }
 
 // I have no idea how to implement this function
 func (r *KVSRocksDB) Seq() (etf.ErlTerm, error) {
-	return nil, nil
+	return r.db.Seq()
 }
 
 func (r *KVSRocksDB) Count() (int64, error) {
