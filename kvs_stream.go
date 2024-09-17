@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/iho/etf"
 	"github.com/linxGnu/grocksdb"
+	"github.com/o53/etf"
 )
 
 var (

@@ -1,6 +1,6 @@
 package kvs
 
-import "github.com/iho/etf"
+import "github.com/o53/etf"
 
 // RocksDB is a key-value store implementation using RocksDB as the backend.
 

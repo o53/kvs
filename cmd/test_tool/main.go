@@ -5,10 +5,10 @@ import (
 	"log"
 	"os"
 
-	"github.com/iho/kvs"
+	"github.com/o53/kvs"
 
-	"github.com/iho/etf"
 	"github.com/linxGnu/grocksdb"
+	"github.com/o53/etf"
 )
 
 func main() {

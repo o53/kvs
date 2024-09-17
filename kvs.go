@@ -1,6 +1,6 @@
 package kvs
 
-import "github.com/iho/etf"
+import "github.com/o53/etf"
 
 // put/1 — put record using id as a key.
 // get/2 — get record by key from table.
